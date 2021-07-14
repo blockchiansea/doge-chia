@@ -6,7 +6,7 @@ import pytest
 from dogechia.server.outbound_message import NodeType
 from dogechia.server.server import ssl_context_for_server
 from dogechia.types.peer_info import PeerInfo
-from dogechia.util.block_tools import BlockTools
+from tests.block_tools import BlockTools
 from dogechia.util.ints import uint16
 from dogechia.util.ws_message import create_payload
 from tests.core.node_height import node_height_at_least

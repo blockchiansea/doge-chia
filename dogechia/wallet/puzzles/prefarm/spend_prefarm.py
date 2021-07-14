@@ -7,11 +7,27 @@ from dogechia.consensus.block_rewards import calculate_base_farmer_reward, calcu
 from dogechia.rpc.full_node_rpc_client import FullNodeRpcClient
 from dogechia.types.blockchain_format.program import Program
 from dogechia.types.coin_solution import CoinSolution
+from dogechia.types.condition_opcodes import ConditionOpcode
 from dogechia.types.spend_bundle import SpendBundle
 from dogechia.util.bech32m import decode_puzzle_hash
+from dogechia.util.condition_tools import parse_sexp_to_conditions
 from dogechia.util.config import load_config
 from dogechia.util.default_root import DEFAULT_ROOT_PATH
 from dogechia.util.ints import uint32, uint16
+
+
+def print_conditions(spend_bundle: SpendBundle):
+    print("\nConditions:")
+    for coin_solution in spend_bundle.coin_solutions:
+        result = Program.from_bytes(bytes(coin_solution.puzzle_reveal)).run(
+            Program.from_bytes(bytes(coin_solution.solution))
+        )
+        error, result_human = parse_sexp_to_conditions(result)
+        assert error is None
+        assert result_human is not None
+        for cvp in result_human:
+            print(f"{ConditionOpcode(cvp.opcode).name}: {[var.hex() for var in cvp.vars]}")
+    print("")
 
 
 async def main() -> None:
@@ -42,16 +58,27 @@ async def main() -> None:
             binutils.assemble(f"(q . ((51 0x{ph1.hex()} {pool_amounts}) (51 0x{ph2.hex()} {pool_amounts})))")
         )
 
+        print(f"Ph1: {ph1.hex()}")
+        print(f"Ph2: {ph2.hex()}")
+        assert ph1.hex() == "c2260fd65c3d7ee25389881be08cb3f3923934ba0f2256d281c0609b1817ecdf"
+        assert ph2.hex() == "eb5689674fd648ab66a9393e73bc8dcec63148b5c3f3597d597c01f319863e3f"
+
         p_solution = Program.to(binutils.assemble("()"))
 
         sb_farmer = SpendBundle([CoinSolution(farmer_prefarm, p_farmer_2, p_solution)], G2Element())
         sb_pool = SpendBundle([CoinSolution(pool_prefarm, p_pool_2, p_solution)], G2Element())
 
-        print(sb_pool, sb_farmer)
-        res = await client.push_tx(sb_farmer)
+        print("\n\n\nConditions")
+        print_conditions(sb_pool)
+        print("\n\n\n")
+        print("Farmer to spend")
+        print(sb_pool)
+        print(sb_farmer)
+        print("\n\n\n")
+        # res = await client.push_tx(sb_farmer)
         # res = await client.push_tx(sb_pool)
 
-        print(res)
+        # print(res)
         up = await client.get_coin_records_by_puzzle_hash(farmer_prefarm.puzzle_hash, True)
         uf = await client.get_coin_records_by_puzzle_hash(pool_prefarm.puzzle_hash, True)
         print(up)

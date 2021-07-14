@@ -6,7 +6,7 @@ from dogechia.full_node.full_node import FullNode
 from dogechia.rpc.full_node_rpc_api import FullNodeRpcApi
 from dogechia.server.outbound_message import NodeType
 from dogechia.server.start_service import run_service
-from dogechia.util.block_tools import BlockTools, test_constants
+from tests.block_tools import BlockTools, test_constants
 from dogechia.util.config import load_config_cli
 from dogechia.util.default_root import DEFAULT_ROOT_PATH
 from dogechia.util.path import mkdir, path_from_root

@@ -9,7 +9,7 @@ from dogechia.server.server import DogeChiaServer, ssl_context_for_client
 from dogechia.server.ws_connection import WSDogeChiaConnection
 from dogechia.ssl.create_ssl import generate_ca_signed_cert
 from dogechia.types.peer_info import PeerInfo
-from dogechia.util.block_tools import test_constants
+from tests.block_tools import test_constants
 from dogechia.util.ints import uint16
 from tests.setup_nodes import (
     bt,

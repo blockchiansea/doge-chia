@@ -32,6 +32,11 @@ wallet_program_files = set(
         "dogechia/wallet/puzzles/block_program_zero.clvm",
         "dogechia/wallet/puzzles/test_generator_deserialize.clvm",
         "dogechia/wallet/puzzles/test_multiple_generator_input_arguments.clvm",
+        "dogechia/wallet/puzzles/p2_singleton.clvm",
+        "dogechia/wallet/puzzles/pool_waitingroom_innerpuz.clvm",
+        "dogechia/wallet/puzzles/pool_member_innerpuz.clvm",
+        "dogechia/wallet/puzzles/singleton_launcher.clvm",
+        "dogechia/wallet/puzzles/p2_singleton_or_delayed_puzhash.clvm",
     ]
 )
 

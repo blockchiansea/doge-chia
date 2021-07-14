@@ -18,7 +18,7 @@ from dogechia.simulator.start_simulator import service_kwargs_for_full_node_simu
 from dogechia.timelord.timelord_launcher import kill_processes, spawn_process
 from dogechia.types.peer_info import PeerInfo
 from dogechia.util.bech32m import encode_puzzle_hash
-from dogechia.util.block_tools import BlockTools, test_constants
+from tests.block_tools import BlockTools, test_constants
 from dogechia.util.hash import std_hash
 from dogechia.util.ints import uint16, uint32
 from dogechia.util.keychain import Keychain, bytes_to_mnemonic
