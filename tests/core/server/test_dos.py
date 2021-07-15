@@ -12,7 +12,7 @@ from dogechia.protocols.shared_protocol import Handshake
 from dogechia.server.outbound_message import make_msg, Message
 from dogechia.server.rate_limits import RateLimiter
 from dogechia.server.server import ssl_context_for_client
-from dogechia.server.ws_connection import WSChiaConnection
+from dogechia.server.ws_connection import WSDogeChiaConnection
 from dogechia.types.peer_info import PeerInfo
 from dogechia.util.ints import uint16, uint64
 from dogechia.util.errors import Err

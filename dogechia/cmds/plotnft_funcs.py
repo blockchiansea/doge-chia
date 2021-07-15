@@ -13,6 +13,8 @@ from dogechia.protocols.pool_protocol import POOL_PROTOCOL_VERSION
 from dogechia.rpc.farmer_rpc_client import FarmerRpcClient
 from dogechia.rpc.wallet_rpc_client import WalletRpcClient
 from dogechia.types.blockchain_format.sized_bytes import bytes32
+from dogechia.server.server import ssl_context_for_root
+from dogechia.ssl.create_ssl import get_mozilla_ca_crt
 from dogechia.util.bech32m import encode_puzzle_hash
 from dogechia.util.byte_types import hexstr_to_bytes
 from dogechia.util.config import load_config
@@ -25,7 +27,7 @@ from dogechia.wallet.util.wallet_types import WalletType
 async def create_pool_args(pool_url: str) -> Dict:
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{pool_url}/pool_info") as response:
+            async with session.get(f"{pool_url}/pool_info", ssl=ssl_context_for_root(get_mozilla_ca_crt())) as response:
                 if response.ok:
                     json_dict = json.loads(await response.text())
                 else:
@@ -275,7 +277,7 @@ async def join_pool(args: dict, wallet_client: WalletRpcClient, fingerprint: int
     prompt = not args.get("yes", False)
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{pool_url}/pool_info") as response:
+            async with session.get(f"{pool_url}/pool_info", ssl=ssl_context_for_root(get_mozilla_ca_crt())) as response:
                 if response.ok:
                     json_dict = json.loads(await response.text())
                 else:
