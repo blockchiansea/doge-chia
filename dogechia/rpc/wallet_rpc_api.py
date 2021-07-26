@@ -804,7 +804,7 @@ class WalletRpcApi:
             fee = uint64(0)
         async with self.service.wallet_state_manager.lock:
             tx: TransactionRecord = await wallet.generate_signed_transaction([amount], [puzzle_hash], fee)
-            await wallet.push_transaction(tx)
+            await wallet.standard_wallet.push_transaction(tx)
 
         return {
             "transaction": tx,
