@@ -265,7 +265,7 @@ full_node:
 
 ui:
    # The ui node server (if run) will run on this port
-  port: 6222
+  port: 6368
 
   # Which port to use to communicate with the full node
   rpc_port: 6769
@@ -286,7 +286,7 @@ ui:
 
 introducer:
   host: *self_hostname
-  port: 6887
+  port: 6968
   max_peers_to_send: 20
   # The introducer will only return peers who it has seen in the last
   # recent_peer_threshold seconds
