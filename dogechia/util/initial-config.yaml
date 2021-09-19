@@ -240,6 +240,7 @@ full_node:
   # List of trusted DNS seeders to bootstrap from.
   # If you modify this, please change the hardcode as well from FullNode.set_server()
   dns_servers:
+    - "dns-introducer.cryptoshibi.com"
     - "dns-introducer.dogechia.org"
   farmer_peer:
       host: *self_hostname
@@ -248,7 +249,7 @@ full_node:
       host: *self_hostname
       port: 16886
   introducer_peer:
-      host: introducer.dogechia.org  # DogeChia AWS introducer IPv4/IPv6
+      host: introducer.cryptoshibi.com
       port: 42069
   wallet_peer:
     host: *self_hostname
