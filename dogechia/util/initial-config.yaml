@@ -26,7 +26,7 @@ network_overrides: &network_overrides
       address_prefix: "txdg"
 
 selected_network: &selected_network "mainnet"
-ALERTS_URL: https://download.dogechia.org/notify/mainnet_alert.txt
+ALERTS_URL: https://download.dogechi.org/notify/mainnet_alert.txt
 DOGECHIA_ALERTS_PUBKEY: a88dc9b53e21088dcd53347eda53b533aec7cd5ff267c3968b1dfc0dc132e39575cf401f0d6bc9952404dbbfc30731c5
 
 # public ssl ca is included in source code
