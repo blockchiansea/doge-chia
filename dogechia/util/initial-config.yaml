@@ -240,8 +240,8 @@ full_node:
   # List of trusted DNS seeders to bootstrap from.
   # If you modify this, please change the hardcode as well from FullNode.set_server()
   dns_servers:
-    - "dns-introducer.dogechia.farm"
-    - "dns-introducer.dogechia.org"
+    - "dns-introducer.dogechi.org"
+    - "dns-introducer.dogechi.net"
   farmer_peer:
       host: *self_hostname
       port: 6969
@@ -249,7 +249,7 @@ full_node:
       host: *self_hostname
       port: 16886
   introducer_peer:
-      host: introducer.dogechia.farm  # DogeChia introducer IPv4/IPv6
+      host: introducer.dogechi.org  # DogeChia introducer IPv4/IPv6
       port: 42069
   wallet_peer:
     host: *self_hostname
@@ -333,7 +333,7 @@ wallet:
   recent_peer_threshold: 6000
 
   introducer_peer:
-    host: introducer.dogechia.farm # DogeChia AWS introducer IPv4/IPv6
+    host: introducer.dogechi.org # DogeChia AWS introducer IPv4/IPv6
     port: 42069
 
   ssl:
