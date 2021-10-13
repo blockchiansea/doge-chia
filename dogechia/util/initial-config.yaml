@@ -26,7 +26,7 @@ network_overrides: &network_overrides
       address_prefix: "txdg"
 
 selected_network: &selected_network "mainnet"
-ALERTS_URL: https://download.dogechia.org/notify/mainnet_alert.txt
+ALERTS_URL: https://download.dogechi.org/notify/mainnet_alert.txt
 DOGECHIA_ALERTS_PUBKEY: a88dc9b53e21088dcd53347eda53b533aec7cd5ff267c3968b1dfc0dc132e39575cf401f0d6bc9952404dbbfc30731c5
 
 # public ssl ca is included in source code
@@ -240,7 +240,8 @@ full_node:
   # List of trusted DNS seeders to bootstrap from.
   # If you modify this, please change the hardcode as well from FullNode.set_server()
   dns_servers:
-    - "dns-introducer.dogechia.org"
+    - "dns-introducer.dogechi.org"
+    - "dns-introducer.dogechi.net"
   farmer_peer:
       host: *self_hostname
       port: 6969
@@ -248,7 +249,7 @@ full_node:
       host: *self_hostname
       port: 16886
   introducer_peer:
-      host: introducer.dogechia.org  # DogeChia AWS introducer IPv4/IPv6
+      host: introducer.dogechi.org  # DogeChia introducer IPv4/IPv6
       port: 42069
   wallet_peer:
     host: *self_hostname
@@ -265,7 +266,7 @@ full_node:
 
 ui:
    # The ui node server (if run) will run on this port
-  port: 6222
+  port: 6368
 
   # Which port to use to communicate with the full node
   rpc_port: 6769
@@ -301,7 +302,7 @@ introducer:
 
 wallet:
   port: 6883
-  rpc_port: 16761
+  rpc_port: 46761
 
   enable_profiler: False
 
@@ -332,7 +333,7 @@ wallet:
   recent_peer_threshold: 6000
 
   introducer_peer:
-    host: introducer.dogechia.org # DogeChia AWS introducer IPv4/IPv6
+    host: introducer.dogechi.org # DogeChia AWS introducer IPv4/IPv6
     port: 42069
 
   ssl:
