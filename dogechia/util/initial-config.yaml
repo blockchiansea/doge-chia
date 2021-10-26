@@ -253,7 +253,7 @@ full_node:
       port: 42069
   wallet_peer:
     host: *self_hostname
-    port: 6883
+    port: 16823
   logging: *logging
   network_overrides: *network_overrides
   selected_network: *selected_network
@@ -301,7 +301,7 @@ introducer:
     public_key:  "config/ssl/full_node/public_full_node.key"
 
 wallet:
-  port: 6883
+  port: 16823
   rpc_port: 46761
 
   enable_profiler: False
