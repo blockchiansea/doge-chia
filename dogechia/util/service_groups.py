@@ -1,19 +1,35 @@
-from typing import KeysView, Generator
+from __future__ import annotations
+
+from typing import Generator, KeysView
 
 SERVICES_FOR_GROUP = {
-    "all": "dogechia_harvester dogechia_timelord_launcher dogechia_timelord dogechia_farmer dogechia_full_node dogechia_wallet".split(),
-    "node": "dogechia_full_node".split(),
-    "harvester": "dogechia_harvester".split(),
-    "farmer": "dogechia_harvester dogechia_farmer dogechia_full_node dogechia_wallet".split(),
-    "farmer-no-wallet": "dogechia_harvester dogechia_farmer dogechia_full_node".split(),
-    "farmer-only": "dogechia_farmer".split(),
-    "timelord": "dogechia_timelord_launcher dogechia_timelord dogechia_full_node".split(),
-    "timelord-only": "dogechia_timelord".split(),
-    "timelord-launcher-only": "dogechia_timelord_launcher".split(),
-    "wallet": "dogechia_wallet dogechia_full_node".split(),
-    "wallet-only": "dogechia_wallet".split(),
-    "introducer": "dogechia_introducer".split(),
-    "simulator": "dogechia_full_node_simulator".split(),
+    "all": [
+        "dogechia_harvester",
+        "dogechia_timelord_launcher",
+        "dogechia_timelord",
+        "dogechia_farmer",
+        "dogechia_full_node",
+        "dogechia_wallet",
+        "dogechia_data_layer",
+        "dogechia_data_layer_http",
+    ],
+    # TODO: should this be `data_layer`?
+    "data": ["dogechia_wallet", "dogechia_data_layer"],
+    "data_layer_http": ["dogechia_data_layer_http"],
+    "node": ["dogechia_full_node"],
+    "harvester": ["dogechia_harvester"],
+    "farmer": ["dogechia_harvester", "dogechia_farmer", "dogechia_full_node", "dogechia_wallet"],
+    "farmer-no-wallet": ["dogechia_harvester", "dogechia_farmer", "dogechia_full_node"],
+    "farmer-only": ["dogechia_farmer"],
+    "timelord": ["dogechia_timelord_launcher", "dogechia_timelord", "dogechia_full_node"],
+    "timelord-only": ["dogechia_timelord"],
+    "timelord-launcher-only": ["dogechia_timelord_launcher"],
+    "wallet": ["dogechia_wallet"],
+    "introducer": ["dogechia_introducer"],
+    "simulator": ["dogechia_full_node_simulator"],
+    "crawler": ["dogechia_crawler"],
+    "seeder": ["dogechia_crawler", "dogechia_seeder"],
+    "seeder-only": ["dogechia_seeder"],
 }
 
 

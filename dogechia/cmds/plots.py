@@ -1,15 +1,19 @@
+from __future__ import annotations
+
+import asyncio
 import logging
 import sys
 from pathlib import Path
 
 import click
 
-DEFAULT_STRIPE_SIZE = 65536
+from dogechia.plotting.util import add_plot_directory, validate_plot_size
+
 log = logging.getLogger(__name__)
 
 
 def show_plots(root_path: Path):
-    from dogechia.plotting.plot_tools import get_plot_directories
+    from dogechia.plotting.util import get_plot_directories
 
     print("Directories where plots are being searched for:")
     print("Note that subdirectories must be added manually")
@@ -23,7 +27,7 @@ def show_plots(root_path: Path):
         print(f"{str_path}")
 
 
-@click.group("plots", short_help="Manage your plots")
+@click.group("plots", help="Manage your plots")
 @click.pass_context
 def plots_cmd(ctx: click.Context):
     """Create, add, remove and check your plots"""
@@ -32,10 +36,10 @@ def plots_cmd(ctx: click.Context):
     root_path: Path = ctx.obj["root_path"]
     if not root_path.is_dir():
         raise RuntimeError("Please initialize (or migrate) your config directory with 'dogechia init'")
-    initialize_logging("", {"log_stdout": True}, root_path)
+    initialize_logging("", {"log_level": "INFO", "log_stdout": True}, root_path)
 
 
-@plots_cmd.command("create", short_help="Create plots")
+@plots_cmd.command("create", help="Create plots")
 @click.option("-k", "--size", help="Plot size", type=int, default=32, show_default=True)
 @click.option("--override-k", help="Force size smaller than 32", default=False, show_default=True, is_flag=True)
 @click.option("-n", "--num", help="Number of plots or challenges", type=int, default=1, show_default=True)
@@ -81,6 +85,14 @@ def plots_cmd(ctx: click.Context):
 @click.option(
     "-x", "--exclude_final_dir", help="Skips adding [final dir] to harvester for farming", default=False, is_flag=True
 )
+@click.option(
+    "-D",
+    "--connect_to_daemon",
+    help="Connects to the daemon for keychain operations",
+    default=False,
+    is_flag=True,
+    hidden=True,  # -D is only set when launched by the daemon
+)
 @click.pass_context
 def create_cmd(
     ctx: click.Context,
@@ -101,41 +113,53 @@ def create_cmd(
     memo: str,
     nobitfield: bool,
     exclude_final_dir: bool,
+    connect_to_daemon: bool,
 ):
-    from dogechia.plotting.create_plots import create_plots
+    from dogechia.plotting.create_plots import create_plots, resolve_plot_keys
+    from dogechia.plotting.util import Params
 
-    class Params(object):
-        def __init__(self):
-            self.size = size
-            self.num = num
-            self.buffer = buffer
-            self.num_threads = num_threads
-            self.buckets = buckets
-            self.stripe_size = DEFAULT_STRIPE_SIZE
-            self.alt_fingerprint = alt_fingerprint
-            self.pool_contract_address = pool_contract_address
-            self.farmer_public_key = farmer_public_key
-            self.pool_public_key = pool_public_key
-            self.tmp_dir = Path(tmp_dir)
-            self.tmp2_dir = Path(tmp2_dir) if tmp2_dir else None
-            self.final_dir = Path(final_dir)
-            self.plotid = plotid
-            self.memo = memo
-            self.nobitfield = nobitfield
-            self.exclude_final_dir = exclude_final_dir
+    params = Params(
+        size=size,
+        num=num,
+        buffer=buffer,
+        num_threads=num_threads,
+        buckets=buckets,
+        tmp_dir=Path(tmp_dir),
+        tmp2_dir=Path(tmp2_dir) if tmp2_dir else None,
+        final_dir=Path(final_dir),
+        plotid=plotid,
+        memo=memo,
+        nobitfield=nobitfield,
+    )
 
-    if size < 32 and not override_k:
-        print("k=32 is the minimum size for farming.")
-        print("If you are testing and you want to use smaller size please add the --override-k flag.")
-        sys.exit(1)
-    elif size < 25 and override_k:
-        print("Error: The minimum k size allowed from the cli is k=25.")
+    root_path: Path = ctx.obj["root_path"]
+    try:
+        validate_plot_size(root_path, size, override_k)
+    except ValueError as e:
+        print(e)
         sys.exit(1)
 
-    create_plots(Params(), ctx.obj["root_path"])
+    plot_keys = asyncio.run(
+        resolve_plot_keys(
+            farmer_public_key,
+            alt_fingerprint,
+            pool_public_key,
+            pool_contract_address,
+            root_path,
+            log,
+            connect_to_daemon,
+        )
+    )
+
+    asyncio.run(create_plots(params, plot_keys))
+    if not exclude_final_dir:
+        try:
+            add_plot_directory(root_path, final_dir)
+        except ValueError as e:
+            print(e)
 
 
-@plots_cmd.command("check", short_help="Checks plots")
+@plots_cmd.command("check", help="Checks plots")
 @click.option("-n", "--num", help="Number of plots or challenges", type=int, default=None)
 @click.option(
     "-g",
@@ -156,7 +180,7 @@ def check_cmd(
     check_plots(ctx.obj["root_path"], num, challenge_start, grep_string, list_duplicates, debug_show_memo)
 
 
-@plots_cmd.command("add", short_help="Adds a directory of plots")
+@plots_cmd.command("add", help="Adds a directory of plots")
 @click.option(
     "-d",
     "--final_dir",
@@ -167,13 +191,16 @@ def check_cmd(
 )
 @click.pass_context
 def add_cmd(ctx: click.Context, final_dir: str):
-    from dogechia.plotting.plot_tools import add_plot_directory
+    from dogechia.plotting.util import add_plot_directory
 
-    add_plot_directory(Path(final_dir), ctx.obj["root_path"])
-    print(f'Added plot directory "{final_dir}".')
+    try:
+        add_plot_directory(ctx.obj["root_path"], final_dir)
+        print(f"Successfully added: {final_dir}")
+    except ValueError as e:
+        print(e)
 
 
-@plots_cmd.command("remove", short_help="Removes a directory of plots from config.yaml")
+@plots_cmd.command("remove", help="Removes a directory of plots from config.yaml")
 @click.option(
     "-d",
     "--final_dir",
@@ -184,13 +211,12 @@ def add_cmd(ctx: click.Context, final_dir: str):
 )
 @click.pass_context
 def remove_cmd(ctx: click.Context, final_dir: str):
-    from dogechia.plotting.plot_tools import remove_plot_directory
+    from dogechia.plotting.util import remove_plot_directory
 
-    remove_plot_directory(Path(final_dir), ctx.obj["root_path"])
-    print(f'Removed plot directory "{final_dir}".')
+    remove_plot_directory(ctx.obj["root_path"], final_dir)
 
 
-@plots_cmd.command("show", short_help="Shows the directory of current plots")
+@plots_cmd.command("show", help="Shows the directory of current plots")
 @click.pass_context
 def show_cmd(ctx: click.Context):
     show_plots(ctx.obj["root_path"])

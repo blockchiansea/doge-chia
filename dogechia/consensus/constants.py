@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import dataclasses
+import logging
+from typing import Any
 
 from dogechia.types.blockchain_format.sized_bytes import bytes32
 from dogechia.util.byte_types import hexstr_to_bytes
 from dogechia.util.ints import uint8, uint32, uint64, uint128
+
+log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -30,6 +36,7 @@ class ConsensusConstants:
     SUB_SLOT_TIME_TARGET: int  # The target number of seconds per sub-slot
     NUM_SP_INTERVALS_EXTRA: int  # The difference between signage point and infusion point (plus required_iters)
     MAX_FUTURE_TIME: int  # The next block can have a timestamp of at most these many seconds more
+    MAX_FUTURE_TIME2: int  # After soft-fork2, this is the new MAX_FUTURE_TIME
     NUMBER_OF_TIMESTAMPS: int  # Than the average of the last NUMBER_OF_TIMESTAMPS blocks
     # Used as the initial cc rc challenges, as well as first block back pointers, and first SES back pointer
     # We override this value based on the chain being run (testnet0, testnet1, mainnet, etc)
@@ -51,23 +58,44 @@ class ConsensusConstants:
     WEIGHT_PROOF_THRESHOLD: uint8
     WEIGHT_PROOF_RECENT_BLOCKS: uint32
     MAX_BLOCK_COUNT_PER_REQUESTS: uint32
-    INITIAL_FREEZE_END_TIMESTAMP: uint64
     BLOCKS_CACHE_SIZE: uint32
-    NETWORK_TYPE: int
     MAX_GENERATOR_SIZE: uint32
     MAX_GENERATOR_REF_LIST_SIZE: uint32
     POOL_SUB_SLOT_ITERS: uint64
 
-    def replace(self, **changes) -> "ConsensusConstants":
+    # soft fork initiated in 1.8.0 release
+    SOFT_FORK2_HEIGHT: uint32
+
+    # soft fork initiated in 2.0 release
+    SOFT_FORK3_HEIGHT: uint32
+
+    # the hard fork planned with the 2.0 release
+    # this is the block with the first plot filter adjustment
+    HARD_FORK_HEIGHT: uint32
+
+    # the plot filter adjustment heights
+    PLOT_FILTER_128_HEIGHT: uint32
+    PLOT_FILTER_64_HEIGHT: uint32
+    PLOT_FILTER_32_HEIGHT: uint32
+
+    def replace(self, **changes: object) -> "ConsensusConstants":
         return dataclasses.replace(self, **changes)
 
-    def replace_str_to_bytes(self, **changes) -> "ConsensusConstants":
+    def replace_str_to_bytes(self, **changes: Any) -> "ConsensusConstants":
         """
         Overrides str (hex) values with bytes.
         """
 
+        filtered_changes = {}
         for k, v in changes.items():
+            if not hasattr(self, k):
+                # NETWORK_TYPE used to be present in default config, but has been removed
+                if k not in ["NETWORK_TYPE"]:
+                    log.warning(f'invalid key in network configuration (config.yaml) "{k}". Ignoring')
+                continue
             if isinstance(v, str):
-                changes[k] = hexstr_to_bytes(v)
+                filtered_changes[k] = hexstr_to_bytes(v)
+            else:
+                filtered_changes[k] = v
 
-        return dataclasses.replace(self, **changes)
+        return dataclasses.replace(self, **filtered_changes)

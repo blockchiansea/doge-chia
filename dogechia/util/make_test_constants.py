@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from typing import Dict
 
-from dogechia.consensus.default_constants import DEFAULT_CONSTANTS, ConsensusConstants
+from dogechia.consensus.constants import ConsensusConstants
+from dogechia.consensus.default_constants import DEFAULT_CONSTANTS
 
 
 def make_test_constants(test_constants_overrides: Dict) -> ConsensusConstants:

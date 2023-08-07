@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dogechia.consensus.constants import ConsensusConstants
 from dogechia.consensus.pos_quality import _expected_plot_size
 from dogechia.types.blockchain_format.sized_bytes import bytes32

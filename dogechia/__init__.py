@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from pkg_resources import DistributionNotFound, get_distribution, resource_filename
 
 try:
-    __version__ = get_distribution("dogechia-blockchain").version
+    # __version__ = get_distribution("doge-chia").version
+    __version__ = "1.8.2"
 except DistributionNotFound:
     # package is not installed
     __version__ = "unknown"

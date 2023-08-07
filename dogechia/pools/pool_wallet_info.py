@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 from blspy import G1Element
 
@@ -9,8 +11,8 @@ from dogechia.types.blockchain_format.coin import Coin
 from dogechia.types.blockchain_format.program import Program
 from dogechia.types.blockchain_format.sized_bytes import bytes32
 from dogechia.util.byte_types import hexstr_to_bytes
-from dogechia.util.ints import uint32, uint8
-from dogechia.util.streamable import streamable, Streamable
+from dogechia.util.ints import uint8, uint32
+from dogechia.util.streamable import Streamable, streamable
 
 
 class PoolSingletonState(IntEnum):
@@ -38,8 +40,8 @@ LEAVING_POOL = PoolSingletonState.LEAVING_POOL
 FARMING_TO_POOL = PoolSingletonState.FARMING_TO_POOL
 
 
-@dataclass(frozen=True)
 @streamable
+@dataclass(frozen=True)
 class PoolState(Streamable):
     """
     `PoolState` is a type that is serialized to the blockchain to track the state of the user's pool singleton
@@ -97,12 +99,12 @@ def create_pool_state(
     return ps
 
 
-@dataclass(frozen=True)
 @streamable
+@dataclass(frozen=True)
 class PoolWalletInfo(Streamable):
     """
     Internal Pool Wallet state, not destined for the blockchain. This can be completely derived with
-    the Singleton's CoinSolutions list, or with the information from the WalletPoolStore.
+    the Singleton's CoinSpends list, or with the information from the WalletPoolStore.
     """
 
     current: PoolState

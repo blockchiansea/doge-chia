@@ -1,13 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 import importlib
+import os
 import pathlib
 import platform
+import sysconfig
 
 from pkg_resources import get_distribution
 
 from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 THIS_IS_WINDOWS = platform.system().lower().startswith("win")
+THIS_IS_MAC = platform.system().lower().startswith("darwin")
 
 ROOT = pathlib.Path(importlib.import_module("dogechia").__file__).absolute().parent.parent
 
@@ -48,11 +51,12 @@ keyring_imports = collect_submodules("keyring.backends")
 # keyring uses entrypoints to read keyring.backends from metadata file entry_points.txt.
 keyring_datas = copy_metadata("keyring")[0]
 
-version_data = copy_metadata(get_distribution("dogechia-blockchain"))[0]
+version_data = copy_metadata(get_distribution("doge-chia"))[0]
 
 block_cipher = None
 
 SERVERS = [
+    "data_layer",
     "wallet",
     "full_node",
     "harvester",
@@ -61,27 +65,46 @@ SERVERS = [
     "timelord",
 ]
 
-# TODO: collapse all these entry points into one `dogechia_exec` entrypoint that accepts the server as a parameter
+if THIS_IS_WINDOWS:
+    hidden_imports_for_windows = ["win32timezone", "win32cred", "pywintypes", "win32ctypes.pywin32"]
+else:
+    hidden_imports_for_windows = []
 
-entry_points = ["dogechia.cmds.dogechia"] + [f"dogechia.server.start_{s}" for s in SERVERS]
-
-hiddenimports = []
-hiddenimports.extend(entry_points)
-hiddenimports.extend(keyring_imports)
+hiddenimports = [
+    *collect_submodules("dogechia"),
+    *keyring_imports,
+    *hidden_imports_for_windows,
+]
 
 binaries = []
 
+if os.path.exists(f"{ROOT}/madmax/chia_plot"):
+    binaries.extend([
+        (
+            f"{ROOT}/madmax/chia_plot",
+            "madmax"
+        )
+    ])
 
-if THIS_IS_WINDOWS:
-    hiddenimports.extend(["win32timezone", "win32cred", "pywintypes", "win32ctypes.pywin32"])
+if os.path.exists(f"{ROOT}/madmax/chia_plot_k34",):
+    binaries.extend([
+        (
+            f"{ROOT}/madmax/chia_plot_k34",
+            "madmax"
+        )
+    ])
 
-# this probably isn't necessary
-if THIS_IS_WINDOWS:
-    entry_points.extend(["aiohttp", "dogechia.util.bip39"])
+if os.path.exists(f"{ROOT}/bladebit/bladebit"):
+    binaries.extend([
+        (
+            f"{ROOT}/bladebit/bladebit",
+            "bladebit"
+        )
+    ])
 
 if THIS_IS_WINDOWS:
     dogechia_mod = importlib.import_module("dogechia")
-    dll_paths = ROOT / "*.dll"
+    dll_paths = pathlib.Path(sysconfig.get_path("platlib")) / "*.dll"
 
     binaries = [
         (
@@ -103,7 +126,8 @@ datas = []
 
 datas.append((f"{ROOT}/dogechia/util/english.txt", "dogechia/util"))
 datas.append((f"{ROOT}/dogechia/util/initial-config.yaml", "dogechia/util"))
-datas.append((f"{ROOT}/dogechia/wallet/puzzles/*.hex", "dogechia/wallet/puzzles"))
+for path in sorted({path.parent for path in ROOT.joinpath("dogechia").rglob("*.hex")}):
+    datas.append((f"{path}/*.hex", path.relative_to(ROOT)))
 datas.append((f"{ROOT}/dogechia/ssl/*", "dogechia/ssl"))
 datas.append((f"{ROOT}/mozilla-ca/*", "mozilla-ca"))
 datas.append(version_data)
@@ -159,6 +183,12 @@ add_binary("daemon", f"{ROOT}/dogechia/daemon/server.py", COLLECT_ARGS)
 
 for server in SERVERS:
     add_binary(f"start_{server}", f"{ROOT}/dogechia/server/start_{server}.py", COLLECT_ARGS)
+
+add_binary("start_crawler", f"{ROOT}/dogechia/seeder/start_crawler.py", COLLECT_ARGS)
+add_binary("start_seeder", f"{ROOT}/dogechia/seeder/dns_server.py", COLLECT_ARGS)
+add_binary("start_data_layer_http", f"{ROOT}/dogechia/data_layer/data_layer_server.py", COLLECT_ARGS)
+add_binary("start_data_layer_s3_plugin", f"{ROOT}/dogechia/data_layer/s3_plugin_service.py", COLLECT_ARGS)
+add_binary("timelord_launcher", f"{ROOT}/dogechia/timelord/timelord_launcher.py", COLLECT_ARGS)
 
 COLLECT_KWARGS = dict(
     strip=False,

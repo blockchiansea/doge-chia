@@ -1,29 +1,30 @@
+from __future__ import annotations
+
 import logging
-from typing import Tuple, List, Optional
+from typing import List, Optional, Tuple
+
 from blspy import G1Element
 from clvm.casts import int_from_bytes, int_to_bytes
 
 from dogechia.clvm.singleton import SINGLETON_LAUNCHER
 from dogechia.consensus.block_rewards import calculate_pool_reward
 from dogechia.consensus.coinbase import pool_parent_id
-from dogechia.pools.pool_wallet_info import PoolState, LEAVING_POOL, SELF_POOLING
-
+from dogechia.pools.pool_wallet_info import LEAVING_POOL, SELF_POOLING, PoolState
 from dogechia.types.blockchain_format.coin import Coin
-from dogechia.types.blockchain_format.program import Program, SerializedProgram
-
+from dogechia.types.blockchain_format.program import Program
+from dogechia.types.blockchain_format.serialized_program import SerializedProgram
 from dogechia.types.blockchain_format.sized_bytes import bytes32
-from dogechia.types.coin_solution import CoinSolution
-from dogechia.wallet.puzzles.load_clvm import load_clvm
-from dogechia.wallet.puzzles.singleton_top_layer import puzzle_for_singleton
-
+from dogechia.types.coin_spend import CoinSpend, compute_additions
 from dogechia.util.ints import uint32, uint64
+from dogechia.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
+from dogechia.wallet.puzzles.singleton_top_layer import puzzle_for_singleton
 
 log = logging.getLogger(__name__)
 # "Full" is the outer singleton, with the inner puzzle filled in
-SINGLETON_MOD = load_clvm("singleton_top_layer.clvm")
-POOL_WAITING_ROOM_MOD = load_clvm("pool_waitingroom_innerpuz.clvm")
-POOL_MEMBER_MOD = load_clvm("pool_member_innerpuz.clvm")
-P2_SINGLETON_MOD = load_clvm("p2_singleton_or_delayed_puzhash.clvm")
+SINGLETON_MOD = load_clvm_maybe_recompile("singleton_top_layer.clsp")
+POOL_WAITING_ROOM_MOD = load_clvm_maybe_recompile("pool_waitingroom_innerpuz.clsp")
+POOL_MEMBER_MOD = load_clvm_maybe_recompile("pool_member_innerpuz.clsp")
+P2_SINGLETON_MOD = load_clvm_maybe_recompile("p2_singleton_or_delayed_puzhash.clsp")
 POOL_OUTER_MOD = SINGLETON_MOD
 
 POOL_MEMBER_HASH = POOL_MEMBER_MOD.get_tree_hash()
@@ -94,7 +95,7 @@ def launcher_id_to_p2_puzzle_hash(launcher_id: bytes32, seconds_delay: uint64, d
     ).get_tree_hash()
 
 
-def get_delayed_puz_info_from_launcher_spend(coinsol: CoinSolution) -> Tuple[uint64, bytes32]:
+def get_delayed_puz_info_from_launcher_spend(coinsol: CoinSpend) -> Tuple[uint64, bytes32]:
     extra_data = Program.from_bytes(bytes(coinsol.solution)).rest().rest().first()
     # Extra data is (pool_state delayed_puz_info)
     # Delayed puz info is (seconds delayed_puzzle_hash)
@@ -151,14 +152,14 @@ def is_pool_member_inner_puzzle(inner_puzzle: Program) -> bool:
 # If you are currently a waiting inner puzzle, then it will look at your target_state to determine the next
 # inner puzzle hash to go to. The member inner puzzle is already committed to its next puzzle hash.
 def create_travel_spend(
-    last_coin_solution: CoinSolution,
+    last_coin_spend: CoinSpend,
     launcher_coin: Coin,
     current: PoolState,
     target: PoolState,
     genesis_challenge: bytes32,
     delay_time: uint64,
     delay_ph: bytes32,
-) -> Tuple[CoinSolution, Program]:
+) -> Tuple[CoinSpend, Program]:
     inner_puzzle: Program = pool_state_to_inner_puzzle(
         current,
         launcher_coin.name(),
@@ -169,45 +170,45 @@ def create_travel_spend(
     if is_pool_member_inner_puzzle(inner_puzzle):
         # inner sol is key_value_list ()
         # key_value_list is:
-        # "ps" -> poolstate as bytes
+        # "p" -> poolstate as bytes
         inner_sol: Program = Program.to([[("p", bytes(target))], 0])
     elif is_pool_waitingroom_inner_puzzle(inner_puzzle):
         # inner sol is (spend_type, key_value_list, pool_reward_height)
         destination_inner: Program = pool_state_to_inner_puzzle(
             target, launcher_coin.name(), genesis_challenge, delay_time, delay_ph
         )
-        log.warning(
+        log.debug(
             f"create_travel_spend: waitingroom: target PoolState bytes:\n{bytes(target).hex()}\n"
             f"{target}"
             f"hash:{Program.to(bytes(target)).get_tree_hash()}"
         )
         # key_value_list is:
-        # "ps" -> poolstate as bytes
+        # "p" -> poolstate as bytes
         inner_sol = Program.to([1, [("p", bytes(target))], destination_inner.get_tree_hash()])  # current or target
     else:
         raise ValueError
 
-    current_singleton: Optional[Coin] = get_most_recent_singleton_coin_from_coin_solution(last_coin_solution)
+    current_singleton: Optional[Coin] = get_most_recent_singleton_coin_from_coin_spend(last_coin_spend)
     assert current_singleton is not None
 
     if current_singleton.parent_coin_info == launcher_coin.name():
         parent_info_list = Program.to([launcher_coin.parent_coin_info, launcher_coin.amount])
     else:
-        p = Program.from_bytes(bytes(last_coin_solution.puzzle_reveal))
-        last_coin_solution_inner_puzzle: Optional[Program] = get_inner_puzzle_from_puzzle(p)
-        assert last_coin_solution_inner_puzzle is not None
+        p = Program.from_bytes(bytes(last_coin_spend.puzzle_reveal))
+        last_coin_spend_inner_puzzle: Optional[Program] = get_inner_puzzle_from_puzzle(p)
+        assert last_coin_spend_inner_puzzle is not None
         parent_info_list = Program.to(
             [
-                last_coin_solution.coin.parent_coin_info,
-                last_coin_solution_inner_puzzle.get_tree_hash(),
-                last_coin_solution.coin.amount,
+                last_coin_spend.coin.parent_coin_info,
+                last_coin_spend_inner_puzzle.get_tree_hash(),
+                last_coin_spend.coin.amount,
             ]
         )
     full_solution: Program = Program.to([parent_info_list, current_singleton.amount, inner_sol])
     full_puzzle: Program = create_full_puzzle(inner_puzzle, launcher_coin.name())
 
     return (
-        CoinSolution(
+        CoinSpend(
             current_singleton,
             SerializedProgram.from_program(full_puzzle),
             SerializedProgram.from_program(full_solution),
@@ -217,14 +218,14 @@ def create_travel_spend(
 
 
 def create_absorb_spend(
-    last_coin_solution: CoinSolution,
+    last_coin_spend: CoinSpend,
     current_state: PoolState,
     launcher_coin: Coin,
     height: uint32,
     genesis_challenge: bytes32,
     delay_time: uint64,
     delay_ph: bytes32,
-) -> List[CoinSolution]:
+) -> List[CoinSpend]:
     inner_puzzle: Program = pool_state_to_inner_puzzle(
         current_state, launcher_coin.name(), genesis_challenge, delay_time, delay_ph
     )
@@ -238,24 +239,24 @@ def create_absorb_spend(
     else:
         raise ValueError
     # full sol = (parent_info, my_amount, inner_solution)
-    coin: Optional[Coin] = get_most_recent_singleton_coin_from_coin_solution(last_coin_solution)
+    coin: Optional[Coin] = get_most_recent_singleton_coin_from_coin_spend(last_coin_spend)
     assert coin is not None
 
     if coin.parent_coin_info == launcher_coin.name():
         parent_info: Program = Program.to([launcher_coin.parent_coin_info, launcher_coin.amount])
     else:
-        p = Program.from_bytes(bytes(last_coin_solution.puzzle_reveal))
-        last_coin_solution_inner_puzzle: Optional[Program] = get_inner_puzzle_from_puzzle(p)
-        assert last_coin_solution_inner_puzzle is not None
+        p = Program.from_bytes(bytes(last_coin_spend.puzzle_reveal))
+        last_coin_spend_inner_puzzle: Optional[Program] = get_inner_puzzle_from_puzzle(p)
+        assert last_coin_spend_inner_puzzle is not None
         parent_info = Program.to(
             [
-                last_coin_solution.coin.parent_coin_info,
-                last_coin_solution_inner_puzzle.get_tree_hash(),
-                last_coin_solution.coin.amount,
+                last_coin_spend.coin.parent_coin_info,
+                last_coin_spend_inner_puzzle.get_tree_hash(),
+                last_coin_spend.coin.amount,
             ]
         )
     full_solution: SerializedProgram = SerializedProgram.from_program(
-        Program.to([parent_info, last_coin_solution.coin.amount, inner_sol])
+        Program.to([parent_info, last_coin_spend.coin.amount, inner_sol])
     )
     full_puzzle: SerializedProgram = SerializedProgram.from_program(
         create_full_puzzle(inner_puzzle, launcher_coin.name())
@@ -274,15 +275,15 @@ def create_absorb_spend(
     assert full_puzzle.get_tree_hash() == coin.puzzle_hash
     assert get_inner_puzzle_from_puzzle(Program.from_bytes(bytes(full_puzzle))) is not None
 
-    coin_solutions = [
-        CoinSolution(coin, full_puzzle, full_solution),
-        CoinSolution(reward_coin, p2_singleton_puzzle, p2_singleton_solution),
+    coin_spends = [
+        CoinSpend(coin, full_puzzle, full_solution),
+        CoinSpend(reward_coin, p2_singleton_puzzle, p2_singleton_solution),
     ]
-    return coin_solutions
+    return coin_spends
 
 
-def get_most_recent_singleton_coin_from_coin_solution(coin_sol: CoinSolution) -> Optional[Coin]:
-    additions: List[Coin] = coin_sol.additions()
+def get_most_recent_singleton_coin_from_coin_spend(coin_sol: CoinSpend) -> Optional[Coin]:
+    additions: List[Coin] = compute_additions(coin_sol)
     for coin in additions:
         if coin.amount % 2 == 1:
             return coin
@@ -367,7 +368,7 @@ def pool_state_from_extra_data(extra_data: Program) -> Optional[PoolState]:
         return None
 
 
-def solution_to_extra_data(full_spend: CoinSolution) -> Optional[PoolState]:
+def solution_to_pool_state(full_spend: CoinSpend) -> Optional[PoolState]:
     full_solution_ser: SerializedProgram = full_spend.solution
     full_solution: Program = Program.from_bytes(bytes(full_solution_ser))
 
@@ -388,7 +389,7 @@ def solution_to_extra_data(full_spend: CoinSolution) -> Optional[PoolState]:
         if inner_solution.rest().first().as_int() != 0:
             return None
 
-        # This is referred to as p1 in the dogechialisp code
+        # This is referred to as p1 in the chialisp code
         # spend_type is absorbing money if p1 is a cons box, spend_type is escape if p1 is an atom
         # TODO: The comment above, and in the CLVM, seems wrong
         extra_data = inner_solution.first()

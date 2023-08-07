@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, List
 
 from dogechia.rpc.rpc_client import RpcClient
@@ -5,10 +7,10 @@ from dogechia.rpc.rpc_client import RpcClient
 
 class HarvesterRpcClient(RpcClient):
     """
-    Client to DogeChia RPC, connects to a local harvester. Uses HTTP/JSON, and converts back from
+    Client to Dogechia RPC, connects to a local harvester. Uses HTTP/JSON, and converts back from
     JSON into native python objects before returning. All api calls use POST requests.
-    Note that this is not the same as the peer protocol, or wallet protocol (which run DogeChia's
-    protocol on top of TCP), it's a separate protocol on top of HTTP thats provides easy access
+    Note that this is not the same as the peer protocol, or wallet protocol (which run Dogechia's
+    protocol on top of TCP), it's a separate protocol on top of HTTP that provides easy access
     to the full node.
     """
 
@@ -19,7 +21,7 @@ class HarvesterRpcClient(RpcClient):
         await self.fetch("refresh_plots", {})
 
     async def delete_plot(self, filename: str) -> bool:
-        return await self.fetch("delete_plot", {"filename": filename})
+        return (await self.fetch("delete_plot", {"filename": filename}))["success"]
 
     async def add_plot_directory(self, dirname: str) -> bool:
         return (await self.fetch("add_plot_directory", {"dirname": dirname}))["success"]
